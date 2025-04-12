@@ -15,7 +15,7 @@ const Chat = () => {
   const [loading, setLoading] = useState(false);
 
   const { user } = useAuth();
-  const URL = import.meta.env.VITE_LOCAL_ENDPOINT;
+  const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -57,7 +57,7 @@ const Chat = () => {
         });
         const res = await secureApiCall(
           // `http://localhost:5000/api/messages?${params.toString()}`,
-          `${URL}/api/messages?${params.toString()}`,
+          `${baseURL}/api/messages?${params.toString()}`,
           {},
           user?.accessToken
         );

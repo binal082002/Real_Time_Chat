@@ -7,14 +7,14 @@ const UserList = ({ onSelectUser, onlineUsers }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
-  const URL = import.meta.env.VITE_LOCAL_ENDPOINT;
+  const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
 
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
         const res = await secureApiCall(
-          `${URL}/api/users`,
+          `${baseURL}/api/users`,
           // "http://localhost:5000/api/users",
           {},
           user?.accessToken

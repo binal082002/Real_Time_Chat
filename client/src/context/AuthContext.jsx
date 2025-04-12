@@ -4,7 +4,7 @@ import { secureApiCall } from "../utils/api";
 import socket from "../utils/socket";
 
 import { createContext, useState, useEffect, useContext } from "react"
-const URL = import.meta.env.VITE_LOCAL_ENDPOINT;
+const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
 
 const AuthContext = createContext();
 
@@ -37,7 +37,7 @@ export const AuthProvider = ({children}) => {
 
         //Add user to mongoDB
         try{
-          const res = await fetch(`${URL}/api/users`, {
+          const res = await fetch(`${baseURL}/api/users`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-const URL = import.meta.env.VITE_LOCAL_ENDPOINT;
-const socket = io(URL); //backend URL
+const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
+const socket = io(baseURL); //backend URL
 
 export default socket;

@@ -15,7 +15,7 @@ const ChatWindow = ({
 
   const getFullUrl = (path) => {
     // Adjust this based on your env setup
-    const baseURL = import.meta.env.VITE_LOCAL_ENDPOINT;
+    const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
     return `${baseURL}${path}`;
   };
 

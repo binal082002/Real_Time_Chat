@@ -12,7 +12,7 @@ const MessageInput = ({ senderId, receiverId }) => {
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState(null);
 
-  const URL = import.meta.env.VITE_LOCAL_ENDPOINT;
+  const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
 
   const { user } = useAuth();
 
@@ -39,7 +39,7 @@ const MessageInput = ({ senderId, receiverId }) => {
 
     try {
       const res = await secureApiCall(
-        `${URL}/api/messages`,
+        `${baseURL}/api/messages`,
         // "http://localhost:5000/api/messages",
         {
           method: "POST",
@@ -126,7 +126,7 @@ const MessageInput = ({ senderId, receiverId }) => {
 
     try {
       const res = await secureApiCall(
-        `${URL}/api/messages`,
+        `${baseURL}/api/messages`,
         {
           method: "POST",
           body: formData,
