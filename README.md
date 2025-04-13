@@ -8,6 +8,8 @@ A full-stack real-time chat app built with React, Node.js, Express, MongoDB, Fir
 ✅ Online user tracking  
 ✅ Responsive UI with clear UX feedback  
 
+[Project Link : talk-wave-real-time-chat.netlify.app](https://talk-wave-real-time-chat.netlify.app)
+
 ---
 
 ## 🛠 **Tech Stack**
