@@ -13,18 +13,12 @@ const MessageInput = ({ senderId, receiverId }) => {
   const [recordedAudio, setRecordedAudio] = useState(null);
 
   const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
-
   const { user } = useAuth();
 
   const handleChange = (e) => {
     const value = e.target.value;
     setContent(value);
-
-    if (value) {
-      socket.emit("typing", { senderId, receiverId });
-    } else {
-      socket.emit("stopTyping", { senderId, receiverId });
-    }
+    socket.emit(value ? "typing" : "stopTyping", { senderId, receiverId });
   };
 
   const handleSend = async () => {
@@ -33,18 +27,12 @@ const MessageInput = ({ senderId, receiverId }) => {
     const formData = new FormData();
     formData.append("senderId", senderId);
     formData.append("receiverId", receiverId);
-
-    if (recordedAudio) formData.append("audio", recordedAudio);
-    else formData.append("content", content);
+    formData.append("content", content);
 
     try {
       const res = await secureApiCall(
         `${baseURL}/api/messages`,
-        // "http://localhost:5000/api/messages",
-        {
-          method: "POST",
-          body: formData,
-        },
+        { method: "POST", body: formData },
         user?.accessToken
       );
 
@@ -58,11 +46,10 @@ const MessageInput = ({ senderId, receiverId }) => {
         senderId,
         receiverId,
         content: message.content,
-        type: recordedAudio ? "audio" : "text",
+        type: "text",
       });
 
       setContent("");
-      setRecordedAudio(null);
       socket.emit("stopTyping", { senderId, receiverId });
     } catch (err) {
       console.error("Send failed:", err);
@@ -78,16 +65,12 @@ const MessageInput = ({ senderId, receiverId }) => {
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
         setIsRecordingText(false);
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
 
         if (audioBlob.size === 0) {
           console.warn("Recorded audio is empty.");
@@ -100,17 +83,14 @@ const MessageInput = ({ senderId, receiverId }) => {
       mediaRecorder.start();
       setRecording(true);
       setIsRecordingText(true);
-      setShowRecordingModal(true); // 👈 open modal
+      setShowRecordingModal(true);
     } catch (err) {
       console.error("Mic access error:", err);
     }
   };
 
   const stopRecording = () => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
+    if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop();
       setRecording(false);
     }
@@ -122,15 +102,12 @@ const MessageInput = ({ senderId, receiverId }) => {
     const formData = new FormData();
     formData.append("senderId", senderId);
     formData.append("receiverId", receiverId);
-    formData.append("audio", recordedAudio);
+    formData.append("audio", recordedAudio); // 🔽 Audio sent as file (handled by multer-gridfs-storage)
 
     try {
       const res = await secureApiCall(
         `${baseURL}/api/messages`,
-        {
-          method: "POST",
-          body: formData,
-        },
+        { method: "POST", body: formData },
         user?.accessToken
       );
 
@@ -139,11 +116,12 @@ const MessageInput = ({ senderId, receiverId }) => {
       const data = await res.json();
       const message = data.newMessage;
 
+      // Expecting message.content = `/api/audio/<fileId>` or similar path
       socket.emit("sendMessage", {
         roomId: [senderId, receiverId].sort().join("_"),
         senderId,
         receiverId,
-        content: message.content,
+        content: message.content, // this is the path from GridFS
         type: "audio",
       });
 
@@ -154,18 +132,6 @@ const MessageInput = ({ senderId, receiverId }) => {
       console.error("Failed to send audio:", err);
     }
   };
-
-  // const stopRecording = () => {
-  //   setTimeout(() => {
-  //     if (
-  //       mediaRecorderRef.current &&
-  //       mediaRecorderRef.current.state === "recording"
-  //     ) {
-  //       mediaRecorderRef.current.stop();
-  //       setRecording(false);
-  //     }
-  //   }, 1000); // wait 1 second before stopping
-  // };
 
   return (
     <div className="flex items-center p-4 bg-white border border-purple-300 shadow-2xl rounded-lg mt-2 relative">
@@ -181,7 +147,7 @@ const MessageInput = ({ senderId, receiverId }) => {
       <button
         onClick={handleSend}
         disabled={recording}
-        className={`ml-3 px-6 py-2 rounded-full text-lg transition cursor-pointer ${
+        className={`ml-3 px-6 py-2 rounded-full text-lg transition ${
           recording
             ? "bg-gray-400 cursor-not-allowed"
             : "bg-purple-800 hover:bg-purple-900 text-white"
@@ -192,7 +158,7 @@ const MessageInput = ({ senderId, receiverId }) => {
 
       <button
         onClick={startRecording}
-        className={`cursor-pointer ml-2 px-3 py-2 rounded-full bg-purple-400 hover:bg-purple-500 text-white text-2xl`}
+        className="ml-2 px-3 py-2 rounded-full bg-purple-400 hover:bg-purple-500 text-white text-2xl"
         title="Record Audio"
       >
         🎤
@@ -225,20 +191,18 @@ const MessageInput = ({ senderId, receiverId }) => {
             )}
 
             <div className="flex justify-center gap-4 mt-4">
-              {!recordedAudio && (
+              {!recordedAudio ? (
                 <button
                   onClick={stopRecording}
                   className="px-5 py-2 bg-purple-800 hover:bg-purple-900 text-white shadow-2xl rounded-lg"
                 >
                   Stop Recording
                 </button>
-              )}
-
-              {recordedAudio && (
+              ) : (
                 <>
                   <button
                     onClick={handleAudioSend}
-                    className="px-5 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-lg cursor-pointer"
+                    className="px-5 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-lg"
                   >
                     Send
                   </button>
@@ -247,7 +211,7 @@ const MessageInput = ({ senderId, receiverId }) => {
                       setRecordedAudio(null);
                       setShowRecordingModal(false);
                     }}
-                    className="px-4 py-2 border border-purple-800 bg-white text-purple-800 rounded-lg cursor-pointer"
+                    className="px-4 py-2 border border-purple-800 bg-white text-purple-800 rounded-lg"
                   >
                     Cancel
                   </button>

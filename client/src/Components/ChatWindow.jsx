@@ -13,11 +13,14 @@ const ChatWindow = ({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const getFullUrl = (path) => {
-    // Adjust this based on your env setup
-    const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
-    return `${baseURL}${path}`;
+  const getAudioUrl = (url) => {
+      const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
+      const parts = url.split('/');
+      const id = parts[parts.length - 1]; // returns the last part as ID
+    
+      return `${baseURL}/api/audio/${id}`;
   };
+  
 
   return (
     <div className="flex flex-col h-full overflow-y-auto px-4 pt-2 bg-gradient-to-br from-purple-200 to-white">
@@ -41,7 +44,7 @@ const ChatWindow = ({
         {messages.map((msg, idx) => {
           const isOwnMessage = msg.senderId === currentUser.uid;
           const isAudio = msg.type === "audio";
-          const audioSrc = isAudio ? getFullUrl(msg.content) : null;
+          const audioSrc = isAudio ? getAudioUrl(msg.content) : null;
 
           return (
             <div
