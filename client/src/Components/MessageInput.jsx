@@ -3,7 +3,7 @@ import { secureApiCall } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import socket from "../utils/socket";
 
-const MessageInput = ({ senderId, receiverId }) => {
+const MessageInput = ({ selectedChat, currentUser }) => {  
   const [content, setContent] = useState("");
   const [recording, setRecording] = useState(false);
   const [isRecordingText, setIsRecordingText] = useState(false);
@@ -12,6 +12,12 @@ const MessageInput = ({ senderId, receiverId }) => {
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [recordedAudio, setRecordedAudio] = useState(null);
 
+  const senderId = currentUser?.uid;
+  const receiverId = selectedChat?.data?.uid || null;
+  let roomId;
+  if(receiverId) roomId = [senderId, receiverId].sort().join("_");
+  else roomId = selectedChat?.data?._id;
+  
   const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
   const { user } = useAuth();
 
@@ -26,8 +32,9 @@ const MessageInput = ({ senderId, receiverId }) => {
 
     const formData = new FormData();
     formData.append("senderId", senderId);
-    formData.append("receiverId", receiverId);
     formData.append("content", content);
+    formData.append("roomId", roomId);
+    if(receiverId) formData.append("receiverId", receiverId);
 
     try {
       const res = await secureApiCall(
@@ -42,7 +49,7 @@ const MessageInput = ({ senderId, receiverId }) => {
       const message = data.newMessage;
 
       socket.emit("sendMessage", {
-        roomId: [senderId, receiverId].sort().join("_"),
+        roomId,
         senderId,
         receiverId,
         content: message.content,
@@ -101,8 +108,9 @@ const MessageInput = ({ senderId, receiverId }) => {
 
     const formData = new FormData();
     formData.append("senderId", senderId);
-    formData.append("receiverId", receiverId);
+    formData.append("roomId", roomId);
     formData.append("audio", recordedAudio); // 🔽 Audio sent as file (handled by multer-gridfs-storage)
+    if(receiverId) formData.append("receiverId", receiverId);
 
     try {
       const res = await secureApiCall(
@@ -118,7 +126,7 @@ const MessageInput = ({ senderId, receiverId }) => {
 
       // Expecting message.content = `/api/audio/<fileId>` or similar path
       socket.emit("sendMessage", {
-        roomId: [senderId, receiverId].sort().join("_"),
+        roomId,
         senderId,
         receiverId,
         content: message.content, // this is the path from GridFS

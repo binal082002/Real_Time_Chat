@@ -4,6 +4,8 @@ const app = express();
 const protectedRoutes = require("./routes/protected.js");
 const messageRoutes = require('./routes/messages.routes.js');
 const userRoutes = require('./routes/user.routes.js');
+const groupRoutes = require('./routes/group.routes.js');
+
 const socketIO = require("socket.io");
 const socketHandler = require("./config/socket.js");
 const http = require('http');
@@ -36,6 +38,7 @@ app.get('/', (req, res) => {
 
 app.use("/api", protectedRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/group', groupRoutes);
 
 // Serve audio file from GridFS
 app.get('/api/audio/:id', async (req, res) => {

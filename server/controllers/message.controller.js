@@ -4,9 +4,9 @@ const { Readable } = require("stream");
 
 const postMessages = async (req, res) => {
   try {
-    const { senderId, receiverId, content } = req.body;
-    if (!senderId || !receiverId) {
-      return res.status(400).json({ message: "senderId and receiverId are required" });
+    const { senderId, receiverId, content, roomId } = req.body;
+    if (!senderId) {
+      return res.status(400).json({ message: "senderId is required" });
     }
 
     let messageType = "text";
@@ -35,6 +35,7 @@ const postMessages = async (req, res) => {
             senderId,
             receiverId,
             content: messageContent,
+            roomId,
             type: messageType,
           });
 
@@ -48,35 +49,31 @@ const postMessages = async (req, res) => {
         senderId,
         receiverId,
         content: messageContent,
+        roomId,
         type: messageType,
       });
       await newMessage.save();
       return res.status(201).json({ newMessage });
     }
+
   } catch (err) {
     console.error("Error in postMessages:", err);
     return res.status(500).json({ error: "Failed to send message" });
   }
 };
 
-
-
 const getMessages = async (req, res) => {
-  const { senderId, receiverId } = req.query;
+  const { roomId } = req.query;
 
-  if (!senderId || !receiverId) {
-    return res.status(400).json({ message: "senderId and receiverId required" });
+  if (!roomId) {
+    return res.status(400).json({ message: "roomId is required" });
   }
 
   try {
-    const messages = await Message.find({
-      $or: [
-        { senderId, receiverId },
-        { senderId: receiverId, receiverId: senderId },
-      ],
-    }).sort({ timestamp: 1 });
-
+    const messages = await Message.find({roomId}).sort({ timestamp: 1 });
+      
     return res.json({ messages });
+
   } catch (error) {
     console.error("Error in getMessages:", error);
     return res.status(500).json({ error: "Failed to get messages" });

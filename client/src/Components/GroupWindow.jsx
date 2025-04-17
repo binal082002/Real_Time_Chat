@@ -1,12 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-const ChatWindow = ({
-  messages,
-  currentUser,
-  selectedChat,
-  isOnline = false,
-  isTyping = false,
-}) => {
+const GroupWindow = ({ messages, currentUser, selectedChat }) => {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -14,29 +8,40 @@ const ChatWindow = ({
   }, [messages]);
 
   const getAudioUrl = (url) => {
-      const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
-      const parts = url.split('/');
-      const id = parts[parts.length - 1]; // returns the last part as ID
-    
-      return `${baseURL}/api/audio/${id}`;
+    const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
+    const parts = url.split("/");
+    const id = parts[parts.length - 1]; // returns the last part as ID
+
+    return `${baseURL}/api/audio/${id}`;
   };
-  
+
+  const getSenderName = (senderId) => {
+    const sender = selectedChat.data.members.find(
+      (member) => member.uid === senderId
+    );
+    return sender?.displayName;
+  };
 
   return (
     <div className="flex flex-col h-full overflow-y-auto px-4 pt-2 bg-gradient-to-br from-purple-200 to-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white w-full flex items-center gap-4 p-4 shadow-md rounded-xl">
+      <div className="sticky top-0 z-10 bg-white w-full flex items-start gap-4 p-4 shadow-md rounded-xl">
         <div className="h-10 w-10 capitalize rounded-full bg-purple-700 flex items-center justify-center text-white">
-        {/* {selectedChat.type=="user" ? selectedChat?.data?.displayName.charAt(0): selectedChat?.data?.name.charAt(0)} */}
-        {selectedChat?.data?.displayName?.charAt(0)}
+          {selectedChat?.data?.name.charAt(0)}
         </div>
-        <div className="font-semibold text-black capitalize">
-        {selectedChat?.data?.displayName} <br />
-          {isTyping ? (
-            <span className="text-xs text-gray-400">Typing...</span>
-          ) : (
-            isOnline && <span className="text-sm text-green-400">Online</span>
-          )}
+        <div className="flex flex-col">
+          <div className="font-semibold text-black capitalize">
+            {selectedChat?.data?.name}
+          </div>
+
+          <div
+            className="text-xs text-gray-600 truncate max-w-[250px] capitalize"
+            title={selectedChat?.data?.members
+              .map((m) => m.displayName)
+              .join(", ")}
+          >
+            {selectedChat?.data?.members.map((m) => m.displayName).join(", ")}
+          </div>
         </div>
       </div>
 
@@ -50,7 +55,9 @@ const ChatWindow = ({
           return (
             <div
               key={idx}
-              className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} my-2`}
+              className={`flex ${
+                isOwnMessage ? "justify-end" : "justify-start"
+              } my-2`}
             >
               <div
                 className={`inline-block px-6 py-3 rounded-2xl text-black max-w-[70%] ${
@@ -58,7 +65,7 @@ const ChatWindow = ({
                 } shadow-md`}
               >
                 <strong className="text-sm font-semibold capitalize">
-                  {isOwnMessage ? "You" : selectedChat?.data?.displayName}
+                  {isOwnMessage ? "You" : getSenderName(msg.senderId)}
                 </strong>
 
                 <div className="mt-1 text-sm break-words">
@@ -82,4 +89,4 @@ const ChatWindow = ({
   );
 };
 
-export default ChatWindow;
+export default GroupWindow;

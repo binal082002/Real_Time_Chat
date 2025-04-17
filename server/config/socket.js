@@ -4,10 +4,10 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("New client connected", socket.id);
 
-    socket.on("join", ({ roomId }) => {
-      socket.join(roomId);
-      console.log("User joined room: ", roomId);
-    });
+    // socket.on("join", ({ roomId }) => {
+    //   socket.join(roomId);
+    //   console.log("User joined room: ", roomId);
+    // });
 
     socket.on("roomId", (message) => {
       console.log("Message received: ", message);
@@ -53,8 +53,7 @@ module.exports = (io) => {
     });
 
     socket.on("sendMessage", (message) => {
-      const roomId = [message.senderId, message.receiverId].sort().join("_");
-      io.to(roomId).emit("newMessage", message);
+      io.to(message.roomId).emit("newMessage", message);
     });
   });
 };
