@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ChatWindow from "../Components/ChatWindow";
 import GroupWindow from "../Components/GroupWindow";
 import UserList from "../Components/UserList";
@@ -10,11 +10,13 @@ import Loader from "./Loader";
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null); 
+  const [notifications, setNotifications] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const selectedChatRef = useRef(null);
 
   const { user } = useAuth();
   const baseURL = import.meta.env.VITE_DEV_ENDPOINT;
@@ -22,40 +24,50 @@ const Chat = () => {
   useEffect(() => {
     if (!selectedChat) return;
 
+    selectedChatRef.current = selectedChat
+
     let roomId;
     if(selectedChat.type=="user") roomId = [user.uid, selectedChat.data.uid].sort().join("_");
     else roomId = selectedChat.data._id;
 
     socket.emit("joinRoom", roomId);
+    socket.emit("chatOpened",{ userId: user.uid, roomId});
 
     return () => {
       socket.emit("leaveRoom", roomId);
+      socket.emit("chatClosed",{userId: user.uid, roomId})
     };
   }, [selectedChat]);
 
   useEffect(() => {
-    if (!selectedChat) return;
     const handleNewMessage = (message) => {
       let relevant = false;
 
-      if(selectedChat.type == "user"){
-        relevant =
-        (message.senderId === user.uid && message.receiverId === selectedChat?.data?.uid) ||
-        (message.senderId === selectedChat?.data?.uid && message.receiverId === user.uid);
-      }else {
-        relevant = selectedChat?.data?._id == message.roomId
-      }
-      
-      if (relevant) {
-        setMessages((prev) => [...prev, message]);
+      const currentChat = selectedChatRef.current;
+  
+      if (currentChat) {
+        if (currentChat.type === "user") {
+          relevant =
+            (message.senderId === user.uid && message.receiverId === currentChat?.data?.uid) ||
+            (message.senderId === currentChat?.data?.uid && message.receiverId === user.uid);
+        } else {
+          relevant = currentChat?.data?._id === message.roomId;
+        }
+
+        if (relevant) {
+          setMessages((prev) => [...prev, message]);
+        }else setNotifications((prev)=>[...prev,message]);
+      }else{
+        setNotifications((prev)=>[...prev,message]);
       }
     };
-
+  
     socket.on("newMessage", handleNewMessage);
     return () => {
       socket.off("newMessage", handleNewMessage);
     };
-  }, [user?.uid, selectedChat]);
+  }, [user?.uid]);
+  
 
   useEffect(() => {
     if (!selectedChat) return;
@@ -88,17 +100,19 @@ const Chat = () => {
   }, [selectedChat]);
 
   useEffect(() => {
-    
-    if (!selectedChat) return;
-
-    socket.emit("userOnline", user.uid);
-    socket.on("updateOnlineUsers", (userIds) => {
-      setOnlineUsers(userIds);
-    });
-    return () => {
-      socket.off("updateOnlineUsers");
-    };
-  }, [selectedChat]);
+    if (user?.uid) {
+      socket.emit("userOnline", user.uid);
+  
+      socket.on("updateOnlineUsers", (userIds) => {
+        setOnlineUsers(userIds);
+      });
+  
+      return () => {
+        socket.off("updateOnlineUsers");
+      };
+    }
+  }, [user?.uid]);
+  
 
   useEffect(() => {
     if (!selectedChat) return;
@@ -122,11 +136,103 @@ const Chat = () => {
     }
   }, [selectedChat]);
 
+  useEffect(() => {
+    if (!selectedChat) return;
+  
+    const chatId = selectedChat.type === "user"
+      ? [user.uid, selectedChat.data.uid].sort().join("_")
+      : selectedChat.data._id;
+  
+    setNotifications((prev) =>
+      prev.filter((msg) => {
+        const msgRoomId = msg.roomId || [msg.senderId, msg.receiverId].sort().join("_");
+        return msgRoomId !== chatId;
+      })
+    );
+
+    const updateReadStatus = async () => {
+      try {
+        let roomId;
+        if (selectedChat.type === "user") {
+          roomId = [user.uid, selectedChat.data.uid].sort().join("_");
+        } else {
+          roomId = selectedChat.data._id;
+        }
+
+        if(notifications.length==0) return;
+    
+        const unreadExists = notifications.some(
+          (msg) => msg.roomId === roomId && !msg.readBy.includes(user.uid)
+        );
+    
+        if (!unreadExists) return; 
+    
+        const res = await secureApiCall(
+          `${baseURL}/api/messages/${roomId}`,
+          { method: "PATCH" },
+          user?.accessToken
+        );
+    
+        const data = await res.json();
+    
+        setNotifications((prev) =>
+          prev.map((msg) => {
+            if (msg.roomId === roomId && !msg.readBy.includes(user.uid)) {
+              return {
+                ...msg,
+                readBy: [...msg.readBy, user.uid],
+              };
+            }
+            return msg;
+          })
+        );
+      } catch (err) {
+        console.error("Failed to update read status:", err);
+      }
+    };
+    
+
+    updateReadStatus();
+
+  }, [selectedChat]);
+
+  useEffect(()=>{
+    const fetchUnreadMessages = async () => {
+      setLoading(true);
+
+      try {
+          const res = await secureApiCall(
+            // `http://localhost:5000/api/messages?${params.toString()}`,
+            `${baseURL}/api/messages/unread`,
+            {},
+            user?.accessToken
+          );
+          const data = await res.json();
+          setNotifications((prev) => {
+            const allMessages = [...prev, ...data.unreadMessages];
+          
+            const uniqueMessages = Array.from(
+              new Map(allMessages.map((msg) => [msg._id, msg])).values()
+            );
+          
+            return uniqueMessages;
+          });
+        } catch (err) {
+          console.error("Failed to fetch messages:", err);
+        } finally{
+          setLoading(false);
+        }
+    };
+
+    fetchUnreadMessages();
+  },[])
+  
+
   if(loading) return <Loader/>
 
   return (
     <div className="flex h-190 bg-white">
-      <UserList setSelectedChat={setSelectedChat} onlineUsers={onlineUsers} />
+      <UserList setSelectedChat={setSelectedChat} onlineUsers={onlineUsers} notifications={notifications}/>
       <div className="flex-1 flex flex-col overflow-hidden p-4">
         {selectedChat ? (
           <>

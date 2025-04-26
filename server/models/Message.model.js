@@ -24,6 +24,13 @@ const messageSchema = new mongoose.Schema({
     enum: ["text", "audio"], // We specify that this can either be text or audio
     default: "text",
   },
+
+  readBy : [
+    {
+      type: String,
+    }
+  ],
+
   timestamp: {
     type: Date,
     default: Date.now,

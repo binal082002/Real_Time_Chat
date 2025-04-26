@@ -19,7 +19,6 @@ require('dotenv').config();
 app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api/messages', messageRoutes);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -39,6 +38,8 @@ app.get('/', (req, res) => {
 app.use("/api", protectedRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/group', groupRoutes);
+app.use('/api/messages', messageRoutes);
+
 
 // Serve audio file from GridFS
 app.get('/api/audio/:id', async (req, res) => {

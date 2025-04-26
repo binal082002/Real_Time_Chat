@@ -5,7 +5,7 @@ import Loader from "../pages/Loader";
 import group_validation from "../Validations/group.validation";
 import { toast } from "react-toastify";
 
-const UserList = ({ setSelectedChat, onlineUsers }) => {
+const UserList = ({ setSelectedChat, onlineUsers, notifications }) => {
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,14 +22,14 @@ const UserList = ({ setSelectedChat, onlineUsers }) => {
       try {
         const [usersRes, groupsRes] = await Promise.all([
           secureApiCall(`${baseURL}/api/users`, {}, user?.accessToken),
-          secureApiCall(`${baseURL}/api/group`, {}, user?.accessToken)
+          secureApiCall(`${baseURL}/api/group`, {}, user?.accessToken),
         ]);
-  
+
         const [usersData, groupsData] = await Promise.all([
           usersRes.json(),
-          groupsRes.json()
+          groupsRes.json(),
         ]);
-  
+
         setUsers(usersData);
         setGroups(groupsData);
       } catch (err) {
@@ -38,12 +38,11 @@ const UserList = ({ setSelectedChat, onlineUsers }) => {
         setLoading(false);
       }
     };
-  
+
     if (user?.uid) {
       fetchData();
     }
   }, [grpPopup]);
-  
 
   const toggleMember = (uid) => {
     setGroup((prev) => {
@@ -57,34 +56,50 @@ const UserList = ({ setSelectedChat, onlineUsers }) => {
   const handleGroupCreate = async (e) => {
     e.preventDefault();
 
-      let error = group_validation(group);
+    let error = group_validation(group);
 
-      if (error && Object.keys(error).length > 0) {
-        setErrors(error);
-        return;
-      }
+    if (error && Object.keys(error).length > 0) {
+      setErrors(error);
+      return;
+    }
 
-      setErrors({});
-      try {
-        const res = await secureApiCall(
-          `${baseURL}/api/group`,
-          { method: "POST", body: JSON.stringify({
+    setErrors({});
+    try {
+      const res = await secureApiCall(
+        `${baseURL}/api/group`,
+        {
+          method: "POST",
+          body: JSON.stringify({
             name: group.name,
             members: Array.from(new Set([...group.members, user.uid])),
-          })},
-          user?.accessToken
-        );
+          }),
+        },
+        user?.accessToken
+      );
 
-        if(res.ok){
-          setGroup({ name: "", members: [] });
-          setGrpPopup(false);
-          toast.success("Group created successfully")
-        }
-
-      } catch (error) {
-        console.error("Failed to create group:", err);
+      if (res.ok) {
+        setGroup({ name: "", members: [] });
+        setGrpPopup(false);
+        toast.success("Group created successfully");
       }
+    } catch (error) {
+      console.error("Failed to create group:", err);
+    }
   };
+
+  const hasNotification = (u) =>{
+    let roomId = [user.uid,u.uid].sort().join('_');
+    
+    return notifications.some((msg) =>
+      msg.roomId===roomId && !msg.readBy.includes(user.uid)
+    );
+  }
+
+  const hasGroupNotification = (group) =>{    
+    return notifications.some((msg) =>
+      msg.roomId==group._id && !msg.readBy.includes(user.uid)
+    );
+  }    
 
   return (
     <div className="hidden sm:block w-[290px] bg-white text-gray-800 py-4 px-1 rounded-2xl shadow-lg border border-purple-200">
@@ -94,51 +109,55 @@ const UserList = ({ setSelectedChat, onlineUsers }) => {
         </h3>
         <button
           className="text-sm bg-purple-600 text-white px-1.5 py-2 rounded hover:bg-purple-700"
-          onClick={()=>setGrpPopup(!grpPopup)}
+          onClick={() => setGrpPopup(!grpPopup)}
         >
           Create Group
         </button>
       </div>
 
-     
-        <ul className="space-y-3 mt-2">
-          {users.map((u) => (
-            <li
-              key={u.uid}
-              onClick={() => setSelectedChat({type : "user", data : u})}
-              className={`cursor-pointer p-3 rounded-xl transition-all duration-300 bg-purple-200 hover:bg-purple-300 ${
-                onlineUsers.includes(u.uid) ? "border-l-4 border-green-500" : ""
-              }`}
-            >
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-white text-black capitalize flex items-center justify-center font-bold">
-                  {u.displayName.charAt(0)}
-                </div>
-                <span className="ml-3 text-sm capitalize font-semibold text-black">
-                  {u.displayName}
-                </span>
+      <ul className="space-y-3 mt-2">
+        {users.map((u) => (
+          <li
+            key={u.uid}
+            onClick={() => setSelectedChat({ type: "user", data: u })}
+            className={`relative cursor-pointer p-3 rounded-xl transition-all duration-300 bg-purple-200 hover:bg-purple-300 ${
+              onlineUsers.includes(u.uid) ? "border-l-4 border-green-500" : ""
+            }`}
+          >
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full bg-white text-black capitalize flex items-center justify-center font-bold">
+                {u.displayName.charAt(0)}
               </div>
-            </li>
-          ))}
+              <span className="ml-3 text-sm capitalize font-semibold text-black">
+                {u.displayName}
+              </span>
+            </div>
+            {hasNotification(u) && (
+              <div className="absolute top-7 right-3 w-2 h-2 rounded-full bg-green-500" />
+            )}
+          </li>
+        ))}
 
-{groups.map((group) => (
-            <li
-              key={group._id}
-              onClick={() => setSelectedChat({type : "group", data : group})}
-              className={`cursor-pointer p-3 rounded-xl transition-all duration-300 bg-purple-200 hover:bg-purple-300`}
-            >
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-white text-black capitalize flex items-center justify-center font-bold">
-                &#128101; 
-                </div>
-                <span className="ml-3 text-sm capitalize font-semibold text-black">
-                  {group.name}
-                </span>
+        {groups.map((group) => (
+          <li
+            key={group._id}
+            onClick={() => setSelectedChat({ type: "group", data: group })}
+            className={`relative cursor-pointer p-3 rounded-xl transition-all duration-300 bg-purple-200 hover:bg-purple-300`}
+          >
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full bg-white text-black capitalize flex items-center justify-center font-bold">
+                &#128101;
               </div>
-            </li>
-          ))}
-        </ul>
-      
+              <span className="ml-3 text-sm capitalize font-semibold text-black">
+                {group.name}
+              </span>
+            </div>
+            {hasGroupNotification(group) && (
+              <div className="absolute top-7 right-3 w-2 h-2 rounded-full bg-green-500" />
+             )}
+          </li>
+        ))}
+      </ul>
 
       {grpPopup && (
         <div className="fixed inset-0 flex items-center justify-center bg-opacity-30 z-50">
@@ -154,8 +173,9 @@ const UserList = ({ setSelectedChat, onlineUsers }) => {
               onChange={(e) => setGroup({ ...group, name: e.target.value })}
               className="w-full border border-purple-300 rounded-md px-3 py-2 mb-4 focus:outline-none"
             />
-            {errors?.name && (<p className="text-sm text-red-500 -mt-3">{errors.name}</p>)}
-
+            {errors?.name && (
+              <p className="text-sm text-red-500 -mt-3">{errors.name}</p>
+            )}
 
             <div className="max-h-48 overflow-y-auto mb-4 space-y-2">
               {users.map((u) => (
@@ -171,14 +191,18 @@ const UserList = ({ setSelectedChat, onlineUsers }) => {
                   </span>
                 </label>
               ))}
-              {errors?.members && (<p className="text-sm text-red-500 -mt-3">{errors.members}</p>)}
-
+              {errors?.members && (
+                <p className="text-sm text-red-500 -mt-3">{errors.members}</p>
+              )}
             </div>
-
 
             <div className="flex justify-center gap-8 align-middle">
               <button
-                onClick={() => {setGrpPopup(false); setGroup({ name: "", members: [] }); setErrors({})}}
+                onClick={() => {
+                  setGrpPopup(false);
+                  setGroup({ name: "", members: [] });
+                  setErrors({});
+                }}
                 className="p-2 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md cursor-pointer"
               >
                 Close

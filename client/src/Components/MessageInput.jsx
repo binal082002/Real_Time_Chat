@@ -54,6 +54,7 @@ const MessageInput = ({ selectedChat, currentUser }) => {
         receiverId,
         content: message.content,
         type: "text",
+        readBy : message.readBy
       });
 
       setContent("");
@@ -131,6 +132,7 @@ const MessageInput = ({ selectedChat, currentUser }) => {
         receiverId,
         content: message.content, // this is the path from GridFS
         type: "audio",
+        readBy : message.readBy
       });
 
       setRecordedAudio(null);

@@ -1,6 +1,7 @@
 const Group = require("../models/Group.model");
 const User = require("../models/User.model");
 const Message = require("../models/Message.model");
+const { groupMembersMap } = require("../config/user.map");
 
 const createGroup = async(req,res) => {
     const {name, members} = req.body;
@@ -11,6 +12,8 @@ const createGroup = async(req,res) => {
 
     try{
         const newGroup = await Group.create({name,members});
+        groupMembersMap.set(newGroup._id.toString(),new Set(members));
+
         return res.status(201).json(newGroup);
     }catch(error){
         return res.status(500).json({ error: "Group creation failed" });

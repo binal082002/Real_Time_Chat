@@ -10,5 +10,7 @@ const upload = multer({ storage });
 router.get("/",verifyFirebaseToken,messageCtrl.getMessages);
 // router.post("/", verifyFirebaseToken, messageCtrl.upload.single("audio"), messageCtrl.postMessages);
 router.post("/", upload.single("audio"), messageCtrl.postMessages);
+router.patch("/:id",verifyFirebaseToken,messageCtrl.updateReadByStatus);
+router.get("/unread",verifyFirebaseToken,messageCtrl.getUnreadMessages);
 
 module.exports = router;
